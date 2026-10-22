@@ -1,0 +1,22 @@
+name: uptime-check
+# Checks the page behind the printed COP31 QR code every 6 hours.
+# A failed run makes GitHub send a notification e-mail to the account owner.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check page, image and PDF
+        run: |
+          set -e
+          base="https://geohusrev.github.io/cop31/"
+          for path in "" poster.jpg poster-full.jpg poster.pdf; do
+            out=$(curl -sS -o /dev/null -w "%{http_code} %{url_effective}" --max-time 60 "${base}${path}")
+            echo "${path:-index}: ${out}"
+            [ "${out}" = "200 ${base}${path}" ] || { echo "FAILED: ${base}${path}"; exit 1; }
+          done
+          curl -sS --max-time 60 "${base}" | grep -q "COP31 Poster" || { echo "FAILED: page content changed"; exit 1; }
